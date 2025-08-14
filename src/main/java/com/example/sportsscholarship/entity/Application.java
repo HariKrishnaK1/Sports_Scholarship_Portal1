@@ -3,11 +3,14 @@ package com.example.sportsscholarship.entity;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,12 +33,14 @@ public class Application {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "applicant_id", nullable = false)
+    @JsonIgnore
     private User applicant;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "scholarship_id", nullable = false)
+    @JsonIgnore
     private Scholarship scholarship;
 
     @Column(columnDefinition = "TEXT")
@@ -51,6 +56,7 @@ public class Application {
     @Column(nullable = false)
     private LocalDateTime appliedAt = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<CoachVerification> coachVerifications;
 }

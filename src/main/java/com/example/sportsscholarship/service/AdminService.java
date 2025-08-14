@@ -24,6 +24,7 @@ public class AdminService {
     private final ApplicationRepository applicationRepository;
     private final ScholarshipRepository scholarshipRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     public List<Application> getAllApplications() {
         // Sample response - in real implementation, you would fetch from database
@@ -37,23 +38,73 @@ public class AdminService {
     }
 
     public Map<String, Object> approveApplication(Long applicationId) {
-        // Sample response - in real implementation, you would update in database
+        // Persist: set status APPROVED and save
+        Application app = applicationRepository.findById(applicationId).orElse(null);
+        if (app != null) {
+            app.setStatus(ApplicationStatus.APPROVED);
+            app.setRejectionReason(null);
+            applicationRepository.save(app);
+        }
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "Application approved successfully");
         response.put("applicationId", applicationId);
         response.put("status", ApplicationStatus.APPROVED);
+
+        // Attempt to notify applicant by email
+        try {
+            applicationRepository.findById(applicationId).ifPresent(entity -> {
+                User applicant = entity.getApplicant();
+                if (applicant != null && applicant.getEmail() != null) {
+                    String scholarshipName = entity.getScholarship() != null && entity.getScholarship().getName() != null
+                            ? entity.getScholarship().getName()
+                            : (entity.getScholarship() != null ? ("Scholarship ID " + entity.getScholarship().getId()) : "your scholarship");
+                    String subject = "Application Approved: " + scholarshipName;
+                    String body = "Hello " + applicant.getName() + ",\n\n" +
+                            "Good news! Your application (ID: " + applicationId + ") for " + scholarshipName + " has been APPROVED.\n\n" +
+                            "Regards,\nSports Scholarship Portal";
+                    emailService.sendPlainText(applicant.getEmail(), subject, body);
+                }
+            });
+        } catch (Exception ignored) {
+        }
         return response;
     }
 
     public Map<String, Object> rejectApplication(Long applicationId, String rejectionReason) {
-        // Sample response - in real implementation, you would update in database
+        // Persist: set status REJECTED with reason and save
+        Application app = applicationRepository.findById(applicationId).orElse(null);
+        if (app != null) {
+            app.setStatus(ApplicationStatus.REJECTED);
+            app.setRejectionReason(rejectionReason);
+            applicationRepository.save(app);
+        }
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "Application rejected");
         response.put("applicationId", applicationId);
         response.put("status", ApplicationStatus.REJECTED);
         response.put("rejectionReason", rejectionReason);
+
+        // Attempt to notify applicant by email
+        try {
+            applicationRepository.findById(applicationId).ifPresent(entity -> {
+                User applicant = entity.getApplicant();
+                if (applicant != null && applicant.getEmail() != null) {
+                    String scholarshipName = entity.getScholarship() != null && entity.getScholarship().getName() != null
+                            ? entity.getScholarship().getName()
+                            : (entity.getScholarship() != null ? ("Scholarship ID " + entity.getScholarship().getId()) : "your scholarship");
+                    String subject = "Application Rejected: " + scholarshipName;
+                    String body = "Hello " + applicant.getName() + ",\n\n" +
+                            "We are sorry to inform you that your application (ID: " + applicationId + ") for " + scholarshipName + " has been REJECTED.\n" +
+                            (rejectionReason != null && !rejectionReason.isBlank() ? ("Reason: " + rejectionReason + "\n\n") : "\n") +
+                            "You may review your application and apply again if eligible.\n\n" +
+                            "Regards,\nSports Scholarship Portal";
+                    emailService.sendPlainText(applicant.getEmail(), subject, body);
+                }
+            });
+        } catch (Exception ignored) {
+        }
         return response;
     }
 
@@ -77,5 +128,6 @@ public class AdminService {
         return response;
     }
 }
+
 
 
